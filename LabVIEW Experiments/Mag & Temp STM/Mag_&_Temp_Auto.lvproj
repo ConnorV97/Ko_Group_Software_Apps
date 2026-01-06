@@ -12,11 +12,13 @@
 		<Property Name="server.vi.callsEnabled" Type="Bool">true</Property>
 		<Property Name="server.vi.propertiesEnabled" Type="Bool">true</Property>
 		<Property Name="specify.custom.address" Type="Bool">false</Property>
-		<Item Name="TDC_SubVI" Type="Folder" URL="../TDC_SubVI">
+		<Item Name="CTLS" Type="Folder" URL="../CTLS">
 			<Property Name="NI.DISK" Type="Bool">true</Property>
 		</Item>
-		<Item Name="Point and Shoot Bias Spec.vi" Type="VI" URL="../../../SubVI&apos;s/Point and Shoot Bias Spec.vi"/>
-		<Item Name="TDC_Prototype.vi" Type="VI" URL="../TDC_Prototype.vi"/>
+		<Item Name="SubVIs" Type="Folder" URL="../SubVIs">
+			<Property Name="NI.DISK" Type="Bool">true</Property>
+		</Item>
+		<Item Name="Mag_&amp;_Temp_Cntrl.vi" Type="VI" URL="../Mag_&amp;_Temp_Cntrl.vi"/>
 		<Item Name="Dependencies" Type="Dependencies"/>
 		<Item Name="Build Specifications" Type="Build"/>
 	</Item>
