@@ -26,6 +26,6 @@ plot_dir = os.path.join(main_dir, "Plotted Data")
 
 log_dir = os.path.join(main_dir, "Log Data")
 
-# wait time between processes"
+# wait time between processes
 wait_processing = 1
 wait_compare = 2

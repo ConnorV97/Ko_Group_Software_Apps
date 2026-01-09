@@ -1,7 +1,8 @@
 import time
 import matplotlib.pyplot as plt
 from watchdog.events import FileSystemEventHandler
-from Processing import process_single_sxm
+from Processing_2 import process_single_sxm
+import traceback
 
 class SXMFileHandler(FileSystemEventHandler):
     def __init__(self, output_dir):
@@ -21,5 +22,4 @@ class SXMFileHandler(FileSystemEventHandler):
                 plt.switch_backend('agg')
                 process_single_sxm(event.src_path, self.output_dir, self.processed_count)
             except Exception as e:
-                print(f"Error processing file: {e}")
-
+                traceback.print_exc()

@@ -9,6 +9,7 @@ import config
 import matplotlib.pyplot as plt
 import re
 
+
 def parse_scan_label(path: str):
 
     name = os.path.basename(path)
@@ -36,11 +37,15 @@ def plot_fft(img1, img2, f1, f2, cross_power, inv_corr, scan1: str, scan2: str, 
 
     plt.subplot(2, 3, 1)
     plt.title(f"FFT Img 1: {scan1}")
+    plt.xlim([0, img1.shape[0]])
+    plt.ylim([0, img1.shape[1]])
     plt.imshow(np.log1p(np.abs(np.fft.fftshift(f1))), cmap= 'inferno')
     plt.colorbar()
 
     plt.subplot(2, 3, 2)
     plt.title(f"FFT Img 2: {scan2}")
+    plt.xlim([0, img2.shape[0]])
+    plt.ylim([0, img2.shape[1]])
     plt.imshow(np.log1p(np.abs(np.fft.fftshift(f2))), cmap= 'inferno')
     plt.colorbar()
 
@@ -171,13 +176,13 @@ def calculate_translation(img1_path, img2_path):
     y_shift = -(y_refined - y_center)
     x_shift = -(x_refined - x_center)
     # Round to two decimal places
-    y_shift = round(y_shift, 2)
-    x_shift = round(x_shift, 2)
+    y_shift = round(y_shift, 7)
+    x_shift = round(x_shift, 7)
     return x_shift, y_shift
 
 def get_coords(x, y):
-    x_real = (x/ 512) * 5 * 1e-9   # update these for scan parameters!! (change 10*1e-9)
-    y_real = -(y/ 512) * 5 * 1e-9  # update these for scan parameters!! (change 10*1e-9)
+    x_real = (x/ 256) * 10 * 1e-9  # update these for scan parameters!! (change 10*1e-9)
+    y_real = -(y/ 256) * 10 * 1e-9  # update these for scan parameters!! (change 10*1e-9)
 
     return x_real, y_real
 

@@ -2,7 +2,7 @@ from Handler import SXMFileHandler
 import config
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from Processing import process_single_sxm
+from Processing_2 import process_single_sxm, scan_geo
 from Translation import calculate_translation
 from Translation import get_coords
 from Translation import log_translation
@@ -182,6 +182,7 @@ class ProcessedFileHandler(FileSystemEventHandler):
         # print("[DEBUG] ref exists:", os.path.exists(ref))
         # print("[DEBUG] latest exists:", os.path.exists(latest))
         # print(f"Comparing {ref}, and {latest} ")
+
 
         x_shift, y_shift = calculate_translation(ref, latest)
         log_translation(x_shift, y_shift , ref,latest)
