@@ -9,7 +9,6 @@ import config
 import matplotlib.pyplot as plt
 import re
 
-
 def parse_scan_label(path: str):
 
     name = os.path.basename(path)
@@ -29,7 +28,40 @@ def infer_img_type(img_path:str) -> str:
     else:
         return "not found"
 
-def plot_fft(img1, img2, f1, f2, cross_power, inv_corr, scan1: str, scan2: str, title: str, img_type: str):
+
+# def bandpass_fft2(img, px_size_m, k_low, k_high, smooth=0.08):
+#     """
+#     Spatial-frequency bandpass on a REAL-SPACE image.
+#     k_low, k_high in cycles/m. px_size_m in meters/pixel.
+#     Returns a real-space bandpassed image (float64).
+#     """
+#     img = np.asarray(img)
+#     if np.iscomplexobj(img):
+#         img = np.real(img)
+#     img = img.astype(np.float64, copy=False)
+#
+#     py, px = img.shape
+#     F = np.fft.fftshift(np.fft.fft2(img))
+#
+#     fx = np.fft.fftshift(np.fft.fftfreq(px ,d=px_size_m))
+#     fy = np.fft.fftshift(np.fft.fftfreq(py, d=px_size_m))
+#     FX, FY = np.meshgrid(fx, fy)
+#     K = np.sqrt(FX**2 + FY**2)
+#
+#     bw = max(k_high - k_low, 1e-12)
+#     s = max(smooth * bw, 1e-12)
+#
+#     def sigmoid(x):
+#         return 1.0 / (1.0 + np.exp(-x))
+#
+#     mask = sigmoid((K - k_low)/s) * sigmoid((k_high - K)/s)
+#
+#     out = np.fft.ifft2(np.fft.ifftshift(F * mask))
+#     return np.real(out)
+
+
+
+def plot_fft(img1, img2, f1, f2, cross_power, inv_corr,scan1: str, scan2: str, title: str, img_type: str):
 
 
     plt.suptitle(title, fontsize=12)
@@ -52,25 +84,32 @@ def plot_fft(img1, img2, f1, f2, cross_power, inv_corr, scan1: str, scan2: str, 
     # --- Cross-power spectrum ---
     plt.subplot(2, 3, 3)
     plt.title(f"Cross-Power Spectrum (F1, F2)")
+    plt.xlim([0, img1.shape[0]])
+    plt.ylim([0, img1.shape[1]])
     plt.imshow(np.log1p(np.abs(np.fft.fftshift(cross_power))), cmap="inferno")
     plt.colorbar()
 
     # --- Inverse FFT (correlation peak) ---
     plt.subplot(2, 3, 4)
     plt.title("Phase Correlation (IFFT)")
-    plt.imshow(np.fft.fftshift(inv_corr), cmap="viridis")
+    plt.xlim([0, img1.shape[0]])
+    plt.ylim([0, img1.shape[1]])
+    plt.imshow(np.log1p(np.abs(np.fft.fftshift(inv_corr))), cmap="viridis")
     plt.colorbar()
 
     # --- Real-space images ---
     plt.subplot(2, 3, 5)
     plt.title(f"{scan1} (windowed")
+    plt.xlim([0, img1.shape[0]])
+    plt.ylim([0, img1.shape[1]])
     plt.imshow(img1, cmap="gray")
 
     plt.subplot(2, 3, 6)
     plt.title(f"{scan2} (windowed)")
+    plt.xlim([0, img1.shape[0]])
+    plt.ylim([0, img1.shape[1]])
     plt.imshow(img2, cmap="gray")
 
-    plt.tight_layout()
     fft_dir = os.path.join(config.plot_dir, "FFT Diagnostics", img_type)
     os.makedirs(fft_dir, exist_ok=True)
 
@@ -118,8 +157,11 @@ def calculate_translation(img1_path, img2_path):
     img1_windowed = img1 * window
     img2_windowed = img2 * window
     # Compute 2D FFT of both images
+
     f1 = np.fft.fft2(img1_windowed)
     f2 = np.fft.fft2(img2_windowed)
+
+
     # Compute cross-power spectrum
     cross_power = f1 * np.conj(f2)
     # Normalize to get phase correlation
@@ -176,13 +218,13 @@ def calculate_translation(img1_path, img2_path):
     y_shift = -(y_refined - y_center)
     x_shift = -(x_refined - x_center)
     # Round to two decimal places
-    y_shift = round(y_shift, 7)
-    x_shift = round(x_shift, 7)
+    # y_shift = round(y_shift, 7)
+    # x_shift = round(x_shift, 7)
     return x_shift, y_shift
 
-def get_coords(x, y):
-    x_real = (x/ 256) * 10 * 1e-9  # update these for scan parameters!! (change 10*1e-9)
-    y_real = -(y/ 256) * 10 * 1e-9  # update these for scan parameters!! (change 10*1e-9)
+def get_coords(x_shift, y_shift):
+    x_real = (x_shift/ config.scan_nx) * config.scan_lx  # update these for scan parameters!! (change 10*1e-9)
+    y_real = -(y_shift/ config.scan_ny) * config.scan_ly  # update these for scan parameters!! (change 10*1e-9)
 
     return x_real, y_real
 
@@ -190,7 +232,7 @@ def get_coords(x, y):
 def log_translation(x_shift, y_shift, img1_path, img2_path):
     img_type = "flat" if "flat" in os.path.basename(img1_path) else "denoise"
     x_real, y_real = get_coords(x_shift, y_shift)
-    print(f"Real drift ({img_type}): x = {x_real} m, y = {y_real} m")
+    # print(f"Real drift ({img_type}): x = {x_real} m, y = {y_real} m")
 
     filename = os.path.join(os.path.dirname(__file__), f"latest_translation_{img_type}.txt")
     try:
@@ -206,11 +248,16 @@ def log_translation(x_shift, y_shift, img1_path, img2_path):
 
     return x_real, y_real
 
-def log_translation_excel(x_shift, y_shift, img1_path, img2_path):
-    img_type = "flat" if "flat" in os.path.basename(img1_path) else "denoise"
+def log_translation_excel(out_dict:dict,
+                          dx_real,
+                          dy_real,
+                          ref_path:str,
+                          img_path:str):
+
+    img_type = "flat" if "flat" in os.path.basename(img_path) else "denoise"
 
     # Convert to real units
-    x_real, y_real = get_coords(x_shift, y_shift)
+    x_real, y_real = get_coords(dx_real, dy_real)
 
     # print(f"[EXCEL] Real drift ({img_type}): x = {x_real} m, y = {y_real} m")
 
@@ -219,12 +266,32 @@ def log_translation_excel(x_shift, y_shift, img1_path, img2_path):
     # Build one row
     row = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
-        "img1": os.path.basename(img1_path),
-        "img2": os.path.basename(img2_path),
-        "x_shift_px": float(x_shift),
-        "y_shift_px": float(y_shift),
-        "x_real_m": float(x_real),
-        "y_real_m": float(y_real),
+        "index" :out_dict["idx"],
+
+        # reference-relative drift
+        "dx_ref_real": dx_real,
+        "dy_ref_real": dy_real,
+        "dx_ref_px":out_dict["drift_ref_px"][0],
+        "dy_ref_px":out_dict["drift_ref_px"][1],
+        "dx_step_px":out_dict["drift_step_px"][0],
+        "dy_step_px":out_dict["drift_step_px"][1],
+
+        # velocities
+        "vx_px_s": out_dict["vx_px_s"],
+        "vy_px_s": out_dict["vy_px_s"],
+        "speed_px_s": out_dict["speed_px_s"],
+
+        # keyframe logic
+        "anchored": out_dict["anchored"],
+        "suggested_k": out_dict["suggested_k"],
+
+        #image correlation
+        "ref_image": os.path.basename(ref_path),
+        "current_img": os.path.basename(img_path),
+        # "x_shift_px": float(x_shift),
+        # "y_shift_px": float(y_shift),
+        # "x_real_m": float(x_real),
+        # "y_real_m": float(y_real),
     }
 
     try:
@@ -241,9 +308,9 @@ def log_translation_excel(x_shift, y_shift, img1_path, img2_path):
 
         # Verify it was written correctly (read back last row)
         df_check = pd.read_excel(filename)
-        print(f"[EXCEL] Successfully {action} row to {filename}")
+        # print(f"[EXCEL] Successfully {action} row to {filename}")
         # print("[EXCEL] Last row now:")
-        print(df_check.tail(1).to_string(index=False))
+        # print(df_check.tail(1).to_string(index=False))
 
     except Exception as e:
         print(f"[EXCEL ERROR] Error writing Excel drift log: {e}")

@@ -36,6 +36,10 @@ def scan_geo(scan):
     header = scan.header
     nx,ny = map(int, header["scan_pixels"])
     lx,ly = map(float, header["scan_range"])
+    config.scan_nx = int(nx)
+    config.scan_ny = int(ny)
+    config.scan_lx = float(lx)
+    config.scan_ly = float(ly)
 
     return nx,ny,lx,ly
 

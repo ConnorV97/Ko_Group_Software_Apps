@@ -29,3 +29,10 @@ log_dir = os.path.join(main_dir, "Log Data")
 # wait time between processes
 wait_processing = 1
 wait_compare = 2
+
+# scan parameters
+
+scan_nx = None
+scan_ny = None
+scan_lx = None
+scan_ly = None

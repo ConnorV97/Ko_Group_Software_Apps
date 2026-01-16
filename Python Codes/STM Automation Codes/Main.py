@@ -9,6 +9,7 @@ from Translation import log_translation
 from Translation import log_translation_excel
 import os
 import time
+from drift_tracker import DriftKeyframeTracker
 
 
 # last_processed = {
@@ -117,9 +118,14 @@ import time
 # if __name__=="__main__":
 #     start_watch()
 
-reference_image = {
-    config.flat_dir: None,
-    config.denoise_dir: None
+# reference_image = {
+#     config.flat_dir: None,
+#     config.denoise_dir: None
+# }
+
+trackers = {
+    config.flat_dir: DriftKeyframeTracker(calculate_translation, anchor_every_n= 7, dmax_px= 12.0),
+    config.denoise_dir: DriftKeyframeTracker(calculate_translation, anchor_every_n= 7, dmax_px= 12.0),
 }
 # Keeps track of latest files
 
@@ -152,6 +158,7 @@ class ProcessedFileHandler(FileSystemEventHandler):
         self.folder = folder_name
 
     def on_created(self, event):
+
         if event.is_directory or not event.src_path.endswith(".png"):
             return
 
@@ -163,35 +170,44 @@ class ProcessedFileHandler(FileSystemEventHandler):
         if latest is None:
             return
 
-        if reference_image[self.folder] is None:
-            reference_image[self.folder] = latest
-            print(f'Reference image set {self.folder} -> {os.path.basename(latest)}')
-
-        ref = reference_image[self.folder]
-
-        if not os.path.isabs(ref):
-            ref = os.path.join(self.folder, ref)
+        # if reference_image[self.folder] is None:
+        #     reference_image[self.folder] = latest
+        #     print(f'Reference image set {self.folder} -> {os.path.basename(latest)}')
+        #
+        # ref = reference_image[self.folder]
+        #
+        # if not os.path.isabs(ref):
+        #     ref = os.path.join(self.folder, ref)
 
         if not os.path.isabs(latest):
             latest = os.path.join(self.folder, latest)
 
-        # print("[DEBUG] CWD:", os.getcwd())
-        print("[DEBUG] ref:", os.path.basename(ref))
-        print("[DEBUG] latest:", os.path.basename(latest))
-        # print("[DEBUG] latest:", latest)
-        # print("[DEBUG] ref exists:", os.path.exists(ref))
-        # print("[DEBUG] latest exists:", os.path.exists(latest))
-        # print(f"Comparing {ref}, and {latest} ")
 
+        out = trackers[self.folder].update(latest)
 
-        x_shift, y_shift = calculate_translation(ref, latest)
-        log_translation(x_shift, y_shift , ref,latest)
-        log_translation_excel(x_shift, y_shift , ref,latest)
+        Dx, Dy = out['drift_ref_px']
+        dx_s, dy_s = out['drift_step_px']
 
+        print(f"[{os.path.basename(self.folder)}] i={out['idx']} "
+              f"step=({dx_s:.4f},{dy_s:.4f}) px  "
+              f"drift_ref=({Dx:.4f},{Dy:.4f}) px  "
+              f"v=({out['vx_px_s']:.4f},{out['vy_px_s']:.4f}) px/s  "
+              f"|v|={out['speed_px_s']:.4f} px/s  "
+              f"suggested_k={out['suggested_k']}  "
+              f"anchored={out['anchored']}")
 
+        # # print("[DEBUG] CWD:", os.getcwd())
+        # print("[DEBUG] ref:", os.path.basename(ref))
+        # print("[DEBUG] latest:", os.path.basename(latest))
+        # # print("[DEBUG] latest:", latest)
+        # # print("[DEBUG] ref exists:", os.path.exists(ref))
+        # # print("[DEBUG] latest exists:", os.path.exists(latest))
+        # # print(f"Comparing {ref}, and {latest} ")
 
-
-
+        dx_real, dy_real =(Dx,Dy)
+        log_translation(dx_real, dy_real , trackers[self.folder].ref_path,latest)
+        log_translation_excel(out_dict= out, dx_real=dx_real, dy_real=dy_real,
+                              ref_path=trackers[self.folder].ref_path, img_path= latest)
 
 
         # for f in latest_two:
