@@ -217,18 +217,26 @@ def denoise_data(data):
 
 def normalize_img_for_drift(img_flattened):
     """
-    Drift-safe: keep native resolution. No interpolation.
-    Returns uint8 image with same shape as input.
+    Physically consistent normalization for drift correction.
+    Keeps morphology intact across frames.
+    Returns float32 image.
     """
-    img = (img_flattened * 1e9).astype("float64")
 
-    # Stable 8-bit scaling (optional). Keeps shape unchanged.
-    img_8bit = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    img = img_flattened.astype(np.float64)
 
-    # Keep flip only if you truly need it for consistent orientation
-    img_8bit = cv2.flip(img_8bit, 0)
+    # Remove global offset
+    img -= np.mean(img)
 
-    return img_8bit
+    # Normalize by global contrast (not min/max)
+    std = np.std(img)
+    if std > 1e-12:
+        img /= std
+
+    # Flip only if scan direction requires consistency
+    img = cv2.flip(img, 0)
+
+    return img.astype(np.float32)
+
 
 
 def process_single_sxm(sxm_file_path, flat_dir, denoise_dir, plot_dir, count=None):
