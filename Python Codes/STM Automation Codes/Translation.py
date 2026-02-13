@@ -165,7 +165,7 @@ def calculate_translation(img1_path, img2_path):
     # Compute cross-power spectrum
     cross_power = f1 * np.conj(f2)
     # Normalize to get phase correlation
-    cross_power = cross_power / (np.abs(cross_power) + 1e-10)
+    cross_power = cross_power / (np.abs(cross_power) + 1e-10) # may need to fix this
     # Compute inverse FFT
     inverse_cross_power = np.fft.ifft2(cross_power)
 
