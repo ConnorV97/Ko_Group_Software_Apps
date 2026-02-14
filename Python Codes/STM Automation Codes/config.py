@@ -2,7 +2,7 @@ import os
 
 #Main File Directory
 
-main_dir = r"C:\Users\cvernach\Desktop\Training Data\20251223_Test_Logging"
+main_dir = r"C:\Users\conno\Desktop\20251218_Au(111)_4K_Auto_Mag"
 
 
 #Input Directory
