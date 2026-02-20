@@ -2,7 +2,7 @@ import os
 
 #Main File Directory
 
-main_dir = r"C:\Users\conno\Desktop\20251218_Au(111)_4K_Auto_Mag"
+main_dir = r"C:\Users\conno.DESKTOP-98EBONR\OneDrive\Desktop\STM DATA\FFT check"
 
 
 #Input Directory

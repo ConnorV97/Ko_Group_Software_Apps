@@ -11,8 +11,37 @@ import config  # User-defined configuration (paths, filenames)
 from scipy.stats import pearsonr
 from scipy.optimize import curve_fit
 
+# Libraries for the GDM Model
+import torch
+import numpy as np
+from PIL import Image
+from GDM_model import train
+from denoise_img import denoise_image
+
 # from Processing import subtract_background
 import traceback
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+os.makedirs("pretrained_model", exist_ok= True)
+if os.path.exists("pretrained_model/gdm_model.pth"):
+    from GDM_model import UNetSmall
+    model = UNetSmall()
+    model.load_state_dict(torch.load("pretrained_model/gdm_model.pth", map_location=device))
+    model.to(device)
+else:
+    model = train(train_image_path1 = r"C:\Users\conno.DESKTOP-98EBONR\Downloads\20251217_Au(111)_4K_Auto_Mag-20260219T232221Z-1-001\20251217_Au(111)_4K_Auto_Mag\flatten\20251217_172037_scan001_Au(111)_4k_STM_AUTO_(Both)_0.5T_Au(111)_0064_flat.png",
+                  train_image_path2 = r"C:\Users\conno.DESKTOP-98EBONR\Downloads\20251217_Au(111)_4K_Auto_Mag-20260219T232221Z-1-001\20251217_Au(111)_4K_Auto_Mag\flatten\20251217_202632_scan025_Au(111)_4k_STM_AUTO_(Both)_0.5T_Au(111)_0094_flat.png",
+                  w1=0.5,
+                  w2=0.5,
+                  epochs=50,
+                  batch_size=8,
+                  patch_size=128,
+                  lr=1e-4,
+                  mask_fraction=0.1,
+                  isfft=True,
+                  device=device)
+    torch.save(model.state_dict(), "pretrained_model/gdm_model.pth")
 
 
 
@@ -184,19 +213,28 @@ def FitOffsetToFlattingImageByDiffAndMask(img, mask=None):
     return offset_img
 
 
+# def denoise_data(data):
+#     """
+#     Apply CLAHE (contrast-limited adaptive histogram equalization) and
+#     a bilateral filter to denoise the image.
+#     Input: 8-bit image array
+#     Output: denoised image array
+#     """
+#     # Enhance local contrast
+#     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(36, 36))
+#     image = clahe.apply(data)
+#     # Further denoise while preserving edges
+#     image = cv2.bilateralFilter(image, d=15, sigmaColor=100, sigmaSpace=100)
+#     return image
+
 def denoise_data(data):
     """
-    Apply CLAHE (contrast-limited adaptive histogram equalization) and
-    a bilateral filter to denoise the image.
-    Input: 8-bit image array
-    Output: denoised image array
+    Denoise a uint8 numpy array using the GDM model.
+    Converts to PIL, runs patch-based denoising, returns uint8 numpy array.
     """
-    # Enhance local contrast
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(36, 36))
-    image = clahe.apply(data)
-    # Further denoise while preserving edges
-    image = cv2.bilateralFilter(image, d=15, sigmaColor=100, sigmaSpace=100)
-    return image
+    pil_img = Image.fromarray(data)
+    denoised_pil = denoise_image(model, pil_img, patch_size=256, stride=128, device=device)
+    return np.array(denoised_pil)
 
 
 # def normalize_img(img_flattened):
