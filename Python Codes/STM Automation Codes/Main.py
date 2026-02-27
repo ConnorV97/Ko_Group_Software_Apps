@@ -130,7 +130,7 @@ trackers = {
 # Keeps track of latest files
 
 
-def newest_png(folder : str) -> str| None:
+def newest_png(folder : str) -> str | None:
     files = [f for f in os.listdir(folder) if f.endswith(".png") and "plot" not in f]
     if not files:
         return None

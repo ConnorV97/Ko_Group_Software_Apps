@@ -71,30 +71,30 @@ def plot_fft(img1, img2, f1, f2, cross_power, inv_corr,scan1: str, scan2: str, t
     plt.title(f"FFT Img 1: {scan1}")
     plt.xlim([0, img1.shape[0]])
     plt.ylim([0, img1.shape[1]])
-    plt.imshow(np.log1p(np.abs(np.fft.fftshift(f1))), cmap= 'inferno')
+    plt.imshow(np.log10(np.abs(np.fft.fftshift(f1))), cmap= 'inferno')
     plt.colorbar()
 
     plt.subplot(2, 3, 2)
     plt.title(f"FFT Img 2: {scan2}")
     plt.xlim([0, img2.shape[0]])
     plt.ylim([0, img2.shape[1]])
-    plt.imshow(np.log1p(np.abs(np.fft.fftshift(f2))), cmap= 'inferno')
+    plt.imshow(np.log10(np.abs(np.fft.fftshift(f2))), cmap= 'inferno')
     plt.colorbar()
 
     # --- Cross-power spectrum ---
-    plt.subplot(2, 3, 3)
-    plt.title(f"Cross-Power Spectrum (F1, F2)")
-    plt.xlim([0, img1.shape[0]])
-    plt.ylim([0, img1.shape[1]])
-    plt.imshow(np.log1p(np.abs(np.fft.fftshift(cross_power))), cmap="inferno")
-    plt.colorbar()
+    # plt.subplot(2, 3, 3)
+    # plt.title(f"Cross-Power Spectrum (F1, F2)")
+    # plt.xlim([0, img1.shape[0]])
+    # plt.ylim([0, img1.shape[1]])
+    # plt.imshow(np.log10(np.abs(cross_power)+1e-9), cmap="viridis")
+    # plt.colorbar()
 
     # --- Inverse FFT (correlation peak) ---
     plt.subplot(2, 3, 4)
     plt.title("Phase Correlation (IFFT)")
     plt.xlim([0, img1.shape[0]])
     plt.ylim([0, img1.shape[1]])
-    plt.imshow(np.log1p(np.abs(np.fft.fftshift(inv_corr))), cmap="viridis")
+    plt.imshow(inv_corr, cmap="jet")
     plt.colorbar()
 
     # --- Real-space images ---
@@ -172,24 +172,6 @@ def calculate_translation(img1_path, img2_path):
     # Find the peak
     inverse_cross_power = np.abs(np.fft.fftshift(inverse_cross_power))
 
-    scan1 = parse_scan_label(img1_path)
-    scan2 = parse_scan_label(img2_path)
-    img_type = infer_img_type(img1_path)
-
-    title = f"FFT ({img_type}) |{scan1} vs {scan2}"
-
-    plot_fft(
-        img1_windowed,
-        img2_windowed,
-        f1,
-        f2,
-        cross_power,
-        inverse_cross_power,
-        scan1 = scan1,
-        scan2 = scan2,
-        img_type= img_type,
-        title = title
-    )
     # Apply Gaussian filter to smooth the result
     inverse_cross_power = ndimage.gaussian_filter(inverse_cross_power, sigma=1)
     # Find location of maximum
@@ -220,6 +202,26 @@ def calculate_translation(img1_path, img2_path):
     # Round to two decimal places
     # y_shift = round(y_shift, 7)
     # x_shift = round(x_shift, 7)
+
+    scan1 = parse_scan_label(img1_path)
+    scan2 = parse_scan_label(img2_path)
+    img_type = infer_img_type(img1_path)
+
+    title = f"FFT ({img_type}) |{scan1} vs {scan2}"
+
+    plot_fft(
+        img1_windowed,
+        img2_windowed,
+        f1,
+        f2,
+        cross_power,
+        inverse_cross_power,
+        scan1 = scan1,
+        scan2 = scan2,
+        img_type= img_type,
+        title = title
+    )
+
     return x_shift, y_shift
 
 def get_coords(x_shift, y_shift):
