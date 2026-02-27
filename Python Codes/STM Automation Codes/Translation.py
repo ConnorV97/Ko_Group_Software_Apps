@@ -71,14 +71,14 @@ def plot_fft(img1, img2, f1, f2, cross_power, inv_corr,scan1: str, scan2: str, t
     plt.title(f"FFT Img 1: {scan1}")
     plt.xlim([0, img1.shape[0]])
     plt.ylim([0, img1.shape[1]])
-    plt.imshow(np.log1p(np.abs(np.fft.fftshift(f1))), cmap= 'inferno')
+    plt.imshow(np.log10(np.abs(np.fft.fftshift(f1))), cmap= 'inferno')
     plt.colorbar()
 
     plt.subplot(2, 3, 2)
     plt.title(f"FFT Img 2: {scan2}")
     plt.xlim([0, img2.shape[0]])
     plt.ylim([0, img2.shape[1]])
-    plt.imshow(np.log1p(np.abs(np.fft.fftshift(f2))), cmap= 'inferno')
+    plt.imshow(np.log10(np.abs(np.fft.fftshift(f2))), cmap= 'inferno')
     plt.colorbar()
 
     # --- Cross-power spectrum ---

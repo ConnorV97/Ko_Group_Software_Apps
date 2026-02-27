@@ -18,8 +18,8 @@ from PIL import Image
 from GDM_model import train
 from denoise_img import denoise_image
 
+
 # from Processing import subtract_background
-import traceback
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -98,120 +98,119 @@ def resize_image(image: np.ndarray, size: tuple) -> np.ndarray:
     return cv2.resize(image, size, interpolation=cv2.INTER_AREA)
 
 
-def plane(coords, a, b, c):
-    """
-    Defines a plane function: ax + by + c.
-    """
-    x, y = coords
-    return a * x + b * y + c
 
+
+# -------------------------------
+# SURFACE MODELS
+# -------------------------------
+
+def plane(coords, a, b, c):
+    x, y = coords
+    return a*x + b*y + c
 
 def poly(coords, a, b, c, d, e, f):
-    """
-    Defines a polynomial surface function: ax^2 + by^2 + cxy + dx + ey + f.
-    """
     x, y = coords
-    return a * x ** 2 + b * y ** 2 + c * x * y + d * x + e * y + f
+    return a*x**2 + b*y**2 + c*x*y + d*x + e*y + f
+
+
+# -------------------------------
+# FITTING FUNCTIONS
+# -------------------------------
+
+def fit_surface(img, func, p0, mask=None):
+    """
+    Generic surface fitting routine.
+    Used for both plane and polynomial fits.
+    """
+
+    # Create coordinate grid
+    y = np.arange(img.shape[0])
+    x = np.arange(img.shape[1])
+    X, Y = np.meshgrid(x, y)
+
+    # Flatten
+    if mask is None:
+        x_flat = X.flatten()
+        y_flat = Y.flatten()
+        z_flat = img.flatten()
+    else:
+        x_flat = X[mask == 1]
+        y_flat = Y[mask == 1]
+        z_flat = img[mask == 1]
+
+    # Fit
+    params, _ = curve_fit(func, (x_flat, y_flat), z_flat, p0)
+
+    fitted_surface = func((X, Y), *params).reshape(img.shape)
+
+    corr, _ = pearsonr(z_flat, func((x_flat, y_flat), *params))
+
+    return fitted_surface, params, corr
 
 
 def FitPlane(img, mask=None):
-    """
-    Fits a plane surface to the image data, optionally applying a mask to focus on certain regions.
-    Returns the fitted surface and the Pearson correlation.
-    """
-    x = np.arange(img.shape[1])
-    y = np.arange(img.shape[0])
-    x, y = np.meshgrid(x, y)
-
-    if mask is None:
-        x_flat, y_flat, z_flat = x.flatten(), y.flatten(), img.flatten()
-    else:
-        x_flat, y_flat, z_flat = x[mask == 1].flatten(), y[mask == 1].flatten(), img[mask == 1].flatten()
-
-    p0 = np.zeros(3)
-    params, _ = curve_fit(plane, (x_flat, y_flat), z_flat, p0)
-    plane_fitted = plane((x, y), *params).reshape(img.shape)
-    correlation, _ = pearsonr(z_flat, plane((x_flat, y_flat), *params))
-    return plane_fitted, correlation
+    return fit_surface(img, plane, np.zeros(3), mask)
 
 
 def FitPoly(img, mask=None):
+    return fit_surface(img, poly, np.zeros(6), mask)
+
+
+# -------------------------------
+# LINE OFFSET CORRECTION
+# -------------------------------
+
+def remove_line_offsets(img, mask=None):
     """
-    Fits a polynomial surface to the image data, optionally applying a mask to focus on certain regions.
-    Returns the fitted surface and the Pearson correlation.
+    Removes scan-line creep / slow drift between rows.
     """
-    x = np.arange(img.shape[1])
-    y = np.arange(img.shape[0])
-    x, y = np.meshgrid(x, y)
 
-    if mask is None:
-        x_flat, y_flat, z_flat = x.flatten(), y.flatten(), img.flatten()
-    else:
-        x_flat, y_flat, z_flat = x[mask == 1].flatten(), y[mask == 1].flatten(), img[mask == 1].flatten()
+    corrected = img.copy()
 
-    p0 = np.zeros(6)
-    params, _ = curve_fit(poly, (x_flat, y_flat), z_flat, p0)
-    poly_fitted = poly((x, y), *params).reshape(img.shape)
-    correlation, _ = pearsonr(z_flat, poly((x_flat, y_flat), *params))
+    for i in range(1, img.shape[0]):
 
-    return poly_fitted, correlation
+        prev = corrected[i-1]
+        curr = corrected[i]
 
-
-def SubtractGlobalPoly(img, show=False):
-    """
-    Subtracts a polynomial surface from the image and optionally displays the result.
-    """
-    poly_fitted, correlation = FitPoly(img)
-    img_flattened = img - poly_fitted
-
-    if show:
-        fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-        ax[0].imshow(img, cmap='gray')
-        ax[0].set_title('Original Image')
-        ax[1].imshow(img_flattened, cmap='gray')
-        ax[1].set_title('Flattened Image')
-        plt.show()
-
-    return img_flattened, poly_fitted
-
-
-def SubtractGlobalPlane(img, show=False):
-    """
-    Subtracts a fitted plane from the image and optionally displays the result.
-    """
-    plane_fitted, correlation = FitPlane(img)
-    img_flattened = img - plane_fitted
-
-    if show:
-        fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-        ax[0].imshow(img, cmap='gray')
-        ax[0].set_title('Original Image')
-        ax[1].imshow(img_flattened, cmap='gray')
-        ax[1].set_title('Flattened Image')
-        plt.show()
-
-    return img_flattened, plane_fitted
-
-
-def FitOffsetToFlattingImageByDiffAndMask(img, mask=None):
-    """
-    Calculates the offset between adjacent lines in an image using a mask to ignore certain pixels.
-    """
-    offset_img = img.copy()
-    for i in range(1, offset_img.shape[0]):
-        line_below, current_line = offset_img[i - 1, :], offset_img[i, :]
         if mask is not None:
-            line_below_masked, current_line_masked = line_below[mask[i, :] == 1], current_line[mask[i, :] == 1]
-            offset = np.median(current_line_masked - line_below_masked) if len(line_below_masked) > 0 else 0
-        else:
-            offset = np.median(current_line - line_below)
-        offset_img[i, :] -= offset
+            prev = prev[mask[i] == 1]
+            curr = curr[mask[i] == 1]
 
-    if mask is not None:
-        offset_img[mask == 0] = 0
+        offset = np.median(curr - prev) if len(curr) > 0 else 0
+        corrected[i] -= offset
 
-    return offset_img
+    return corrected
 
+
+# -------------------------------
+# MASTER PIPELINE
+# -------------------------------
+
+def flatten_image(img, mask=None,
+                  remove_poly=False,
+                  remove_plane=True,
+                  remove_lines=True):
+    """
+    Full physically-ordered flattening pipeline.
+    """
+
+    result = img.astype(float).copy()
+
+    # STEP 1 — Remove scanner bow (Polynomial)
+    if remove_poly:
+        poly_surface, _, _ = FitPoly(result, mask)
+        result -= poly_surface
+
+    # STEP 2 — Remove tilt (Plane)
+    if remove_plane:
+        plane_surface, _, _ = FitPlane(result, mask)
+        result -= plane_surface
+
+    # STEP 3 — Remove scan creep (Line offsets)
+    if remove_lines:
+        result = remove_line_offsets(result, mask)
+
+    return result
 
 # def denoise_data(data):
 #     """
@@ -320,7 +319,7 @@ def process_single_sxm(sxm_file_path, flat_dir, denoise_dir, plot_dir, count=Non
         # i_raw = np.array(i_dict.get('forward', i_dict.get('data')), dtype= np.float64)"""
 
         # 1) Flatten & normalize for z height data
-        flat = remove_linear_fit(z_arr)
+        flat = flatten_image(z_arr)
         norm_img = normalize_img_for_drift(flat)
 
         """For Current Channels
