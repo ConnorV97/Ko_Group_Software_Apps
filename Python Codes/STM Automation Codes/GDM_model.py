@@ -182,18 +182,21 @@ def train(train_image_path1, train_image_path2, w1=0.5, w2=0.5, epochs=50, batch
 
     return model
 
+# Uncomment below to train offline
+
+# #
 # if __name__ == "__main__":
 #     # Example paths
-#     image_path1 = r"C:\Users\conno.DESKTOP-98EBONR\Downloads\20251217_Au(111)_4K_Auto_Mag-20260219T232221Z-1-001\20251217_Au(111)_4K_Auto_Mag\flatten\20251217_172037_scan001_Au(111)_4k_STM_AUTO_(Both)_0.5T_Au(111)_0064_flat.png"
-#     image_path2 = r"C:\Users\conno.DESKTOP-98EBONR\Downloads\20251217_Au(111)_4K_Auto_Mag-20260219T232221Z-1-001\20251217_Au(111)_4K_Auto_Mag\flatten\20251217_202632_scan025_Au(111)_4k_STM_AUTO_(Both)_0.5T_Au(111)_0094_flat.png"
+#     image_path2 = r"C:\Users\conno.DESKTOP-98EBONR\Downloads\20251217_Au(111)_4K_Auto_Mag-20260219T232221Z-1-001\20251217_Au(111)_4K_Auto_Mag\flatten\20251217_172037_scan001_Au(111)_4k_STM_AUTO_(Both)_0.5T_Au(111)_0064_flat.png"
+#     image_path1 = r"C:\Users\conno.DESKTOP-98EBONR\Downloads\20251217_Au(111)_4K_Auto_Mag-20260219T232221Z-1-001\20251217_Au(111)_4K_Auto_Mag\flatten\20251217_202632_scan025_Au(111)_4k_STM_AUTO_(Both)_0.5T_Au(111)_0094_flat.png"
 #     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #
 #     model = train(image_path1, image_path2,
-#                   w1=0.5, w2=0.5,
+#                   w1=1.0, w2=0.0,
 #                   epochs=50,
 #                   batch_size=8,
 #                   patch_size=128,
-#                   lr=1e-4,
+#                   lr=1e-5,
 #                   mask_fraction=0.1,
 #                   isfft=True,
 #                   device=torch.device(device))

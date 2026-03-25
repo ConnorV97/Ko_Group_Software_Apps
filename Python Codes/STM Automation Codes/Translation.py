@@ -100,15 +100,15 @@ def plot_fft(img1, img2, f1, f2, cross_power, inv_corr,scan1: str, scan2: str, t
     # --- Real-space images ---
     plt.subplot(2, 3, 5)
     plt.title(f"{scan1} (windowed")
-    plt.xlim([0, img1.shape[0]])
-    plt.ylim([0, img1.shape[1]])
-    plt.imshow(img1, cmap="gray")
+    # plt.xlim([0, img1.shape[0]])
+    # plt.ylim([0, img1.shape[1]])
+    plt.imshow(img1, cmap="gray", origin= "upper")
 
     plt.subplot(2, 3, 6)
     plt.title(f"{scan2} (windowed)")
-    plt.xlim([0, img1.shape[0]])
-    plt.ylim([0, img1.shape[1]])
-    plt.imshow(img2, cmap="gray")
+    # plt.xlim([0, img1.shape[0]])
+    # plt.ylim([0, img1.shape[1]])
+    plt.imshow(img2, cmap="gray", origin= "upper")
 
     fft_dir = os.path.join(config.plot_dir, "FFT Diagnostics", img_type)
     os.makedirs(fft_dir, exist_ok=True)

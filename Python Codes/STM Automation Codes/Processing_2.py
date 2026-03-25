@@ -319,7 +319,7 @@ def process_single_sxm(sxm_file_path, flat_dir, denoise_dir, plot_dir, count=Non
         # i_raw = np.array(i_dict.get('forward', i_dict.get('data')), dtype= np.float64)"""
 
         # 1) Flatten & normalize for z height data
-        flat = flatten_image(z_arr)
+        flat = flatten_image(z_arr, remove_poly= True, remove_plane= False)
         norm_img = normalize_img_for_drift(flat)
 
         """For Current Channels
@@ -334,7 +334,7 @@ def process_single_sxm(sxm_file_path, flat_dir, denoise_dir, plot_dir, count=Non
 
         # Plot & save flattened image
         plt.figure(figsize=(10, 10))
-        im = plt.imshow(norm_img, cmap='afmhot', interpolation='nearest', extent=[0, lx, 0, ly])
+        im = plt.imshow(norm_img, cmap='afmhot', interpolation='nearest' )# extent=[0, lx, 0, ly])
         plt.title('Flattened Image')
         plt.xlabel('X (nm)');
         plt.ylabel('Y (nm)')
@@ -347,7 +347,7 @@ def process_single_sxm(sxm_file_path, flat_dir, denoise_dir, plot_dir, count=Non
         # 2) Denoise & save
         denoised = denoise_data(norm_img)
         plt.figure(figsize=(10, 10))
-        im2 = plt.imshow(denoised, cmap='afmhot', interpolation='nearest', extent=[0, lx, 0, ly])
+        im2 = plt.imshow(denoised, cmap='afmhot', interpolation='nearest') #extent=[0, lx, 0, ly])
         plt.title('Denoised Image')
         plt.xlabel('X (nm)');
         plt.ylabel('Y (nm)')
