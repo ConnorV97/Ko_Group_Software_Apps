@@ -232,7 +232,7 @@ class ProcessedFileHandler(FileSystemEventHandler):
 # Watch function and event scheduler
 
 def start_watch():
-    for directory in [config.input_dir, config.flat_dir, config.denoise_dir, config.plot_dir]:
+    for directory in [config.input_dir, config.flat_dir, config.denoise_dir, config.plot_dir, config.log_dir]:
         if not os.path.exists(directory):
             os.makedirs(directory)
             print(f"Directory created:{directory}")
