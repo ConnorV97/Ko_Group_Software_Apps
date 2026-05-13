@@ -1,0 +1,44 @@
+<Configuration>
+  <Target name="My Computer">
+    <EnableDebuggingForAllVIs></EnableDebuggingForAllVIs>
+    <VI name="Drift Correct Scan Frame.vi">
+      <Breakpoints>
+        <NodeIndexes>
+        </NodeIndexes>
+        <SignalIndexes>
+        </SignalIndexes>
+      </Breakpoints>
+      <Probes>
+        <Generic>
+          <SignalUID value="393"/>
+        </Generic>
+      </Probes>
+    </VI>
+    <VI name="Mag_&_Temp_Cntrl.vi">
+      <Breakpoints>
+        <NodeIndexes>
+        </NodeIndexes>
+        <SignalIndexes>
+        </SignalIndexes>
+      </Breakpoints>
+      <Probes>
+        <Generic>
+          <SignalUID value="5974"/>
+        </Generic>
+      </Probes>
+    </VI>
+    <VI name="Next_Field.vi">
+      <Breakpoints>
+        <NodeIndexes>
+        </NodeIndexes>
+        <SignalIndexes>
+        </SignalIndexes>
+      </Breakpoints>
+      <Probes>
+        <Generic>
+          <SignalUID value="3019"/>
+        </Generic>
+      </Probes>
+    </VI>
+  </Target>
+</Configuration>
