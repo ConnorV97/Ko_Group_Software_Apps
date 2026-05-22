@@ -14,5 +14,18 @@
         </Generic>
       </Probes>
     </VI>
+    <VI name="Mag_&_Temp_Cntrl.vi">
+      <Breakpoints>
+        <NodeIndexes>
+        </NodeIndexes>
+        <SignalIndexes>
+        </SignalIndexes>
+      </Breakpoints>
+      <Probes>
+        <Generic>
+          <SignalUID value="5822"/>
+        </Generic>
+      </Probes>
+    </VI>
   </Target>
 </Configuration>
