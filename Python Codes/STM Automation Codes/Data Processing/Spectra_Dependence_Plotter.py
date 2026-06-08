@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from IPython.core.pylabtools import figsize
 
-dat = ns2.read.Spec(r"C:\Users\conno\Desktop\20251217_Au(111)_4K_Auto_Mag\Au(111)_4k_Auto_Temp_0076.dat")
+dat = ns2.read.Spec(r"C:\Users\cvernach\Desktop\20251217_Au(111)_4K_Auto_Temp\Au(111)_4k_Auto_Temp_0018.dat")
 signals = dat.signals
 # temp = [4.2, 5, 5.5, 6, 6.5, 7, 7.5, 8.0]
 field = [0, 0.5, 1, 1.5, 2, 2.5]
@@ -30,10 +30,10 @@ didv_mins_b =[1.4322242e-12, 1.7249207e-12,2.9756685e-12, 3.7742596e-12, 3.76600
 # didv_fit = fit_fn(T_fit)
 
 
-# plt.plot(bias, didv)
-# plt.xlabel("Current (A)")
-# plt.ylabel("LI Demod 1 X (A)")
-# plt.show()
+plt.plot(bias, didv)
+plt.xlabel("Current (A)")
+plt.ylabel("LI Demod 1 X (A)")
+plt.show()
 plt.figure(figsize=(7,7))
 # plt.plot(T_fit, didv_fit, color ='red' ,label = "Linear Fit")
 # plt.scatter(temp, didv_mins_t, color ="green", label = "Minimum of dI/dV spectra")
@@ -42,10 +42,10 @@ plt.figure(figsize=(7,7))
 # plt.show()
 
 # plt.plot(B_fit, didv_fit, color ='red' ,label = "Poly Fit 2nd Degree")
-plt.scatter(field, didv_mins_b, color='green', label = "Minimum of dI/dV spectra")
-plt.xlabel("Magnetic Field (T)",fontsize=28)
-plt.ylabel("DI/DV (Arb. Units)", fontsize=28)
-plt.show()
+# plt.scatter(field, didv_mins_b, color='green', label = "Minimum of dI/dV spectra")
+# plt.xlabel("Magnetic Field (T)",fontsize=28)
+# plt.ylabel("DI/DV (Arb. Units)", fontsize=28)
+# plt.show()
 
 # plt.figure(figsize=(7,8))
 # file_list = [r"C:\Users\conno\Desktop\20251217_Au(111)_4K_Auto_Temp\Au(111)_4k_Auto_Temp_0043.dat",
