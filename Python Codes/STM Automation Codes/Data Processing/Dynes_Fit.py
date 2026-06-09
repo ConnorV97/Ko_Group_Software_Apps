@@ -1,5 +1,5 @@
 """
-Dynes_fit.py
+dynes_fit.py
 
 Dynes density-of-states fitting for STM tunneling spectroscopy.
 
@@ -23,6 +23,8 @@ Usage:
 import numpy as np
 from scipy.signal import fftconvolve
 import lmfit
+import nanonispy2 as ns2
+import matplotlib.pyplot as plt
 
 K_B = 8.617333262e-5  # eV/K
 
@@ -40,7 +42,7 @@ def dynes_dos(E, Delta, Gamma):
         Dynes broadening parameter in eV.
     """
     z = (E - 1j * Gamma) / np.sqrt((E - 1j * Gamma) ** 2 - Delta ** 2 + 0j)
-    return np.real(z)
+    return np.abs(np.real(z))
 
 
 def thermal_kernel(E, T):
@@ -174,6 +176,69 @@ def fit_dynes(
     result = model.fit(dIdV, params, V=V, weights=weights)
     return result
 
+def ss_junction_dIdV(V, Delta, Gamma, T, V_ac, scale, offset, slope):
+    """S-S junction dI/dV with tied gaps (tip and sample same material).
+
+    Models a superconducting tip with gap Delta tunneling into a sample
+    with the same gap. Coherence peaks appear at ±2Delta/e.
+    """
+    half_span = max(np.abs(V).max(), 8 * Delta) + max(10 * K_B * T, 3 * V_ac, 1e-4)
+    E = np.linspace(-half_span, half_span, 2001)
+
+    N = dynes_dos(E, Delta, Gamma)
+
+    def fermi(E, T):
+        x = np.clip(E / (K_B * T), -50, 50)
+        return 1.0 / (1.0 + np.exp(x))
+
+    f_E = fermi(E, T)
+
+    # I(V) = ∫ N_tip(E') N_sample(E' + eV) [f(E') - f(E' + eV)] dE'
+    I_of_V = np.zeros_like(E)
+    for i, v in enumerate(E):
+        N_shifted = np.interp(E + v, E, N, left=1.0, right=1.0)
+        f_shifted = fermi(E + v, T)
+        integrand = N * N_shifted * (f_E - f_shifted)
+        I_of_V[i] = np.trapezoid(integrand, E)
+
+    # dI/dV by differentiation
+    dIdV_E = np.gradient(I_of_V, E)
+
+    # Lock-in modulation convolution
+    dE = E[1] - E[0]
+    K_V = modulation_kernel(E, V_ac)
+    dIdV_smeared = fftconvolve(dIdV_E, K_V, mode="same") * dE
+
+    return scale * np.interp(V, E, dIdV_smeared) + offset + slope * V
+
+
+def fit_ss(V, dIdV, T_kelvin, V_ac=2e-4, Delta_init=1.36e-3, Gamma_init=5e-5):
+    """Fit an S-S junction model with tied gaps."""
+    model = lmfit.Model(ss_junction_dIdV)
+    dIdV = np.asarray(dIdV, dtype=float)
+    scale_init = float(np.percentile(dIdV, 90) - np.percentile(dIdV, 10))
+    offset_init = float(np.percentile(dIdV, 10))
+    if scale_init <= 0:
+        scale_init = 1.0
+
+    params = model.make_params(
+        Delta=dict(value=Delta_init, min=0.0, max=10e-3),
+        Gamma=dict(value=Gamma_init, min=0.0, max=2e-3),
+        T=dict(value=T_kelvin, vary=False),
+        V_ac=dict(value=V_ac, vary=False),
+        scale=dict(value=scale_init, min=0.0),
+        offset=dict(value=offset_init),
+        slope=dict(value=0.0),
+    )
+    return model.fit(dIdV, params, V=V)
+
+def extract_data(file):
+
+    dat = ns2.read.Spec(file)
+    bias = dat.signals["Bias calc (V)"]
+    didv = dat.signals["LI Demod 1 X (A)"]
+
+    return bias, didv
 
 # ---------------------------------------------------------------------------
 # Synthetic-data helper for testing
@@ -187,28 +252,63 @@ def synthesize_spectrum(V, Delta, Gamma, T, V_ac, noise_frac=0.01, seed=None):
 
 
 if __name__ == "__main__":
-    # Self-test: synthesize a spectrum, fit it, check parameter recovery
-    print("Self-test: Dynes fit on synthetic data")
-    print("=" * 50)
+    file = r"C:\Users\cvernach\Desktop\20251217_Au(111)_4K_Auto_Temp\Au(111)_4k_Auto_Temp_0018.dat"
 
-    V_true = 0.001 * np.linspace(-5, 5, 401)  # ±5 mV in volts
-    truth = dict(Delta=1.40e-3, Gamma=0.05e-3, T=4.2, V_ac=0.2e-3)
+    bias, didv = extract_data(file)
 
-    for trial in range(3):
-        dIdV = synthesize_spectrum(
-            V_true, **truth, noise_frac=0.01, seed=trial
-        )
-        result = fit_dynes(
-            V_true, dIdV,
-            T_kelvin=truth["T"],
-            V_ac=truth["V_ac"],
-            Delta_init=1.0e-3,
-            Gamma_init=1e-4,
-        )
-        D = result.params["Delta"].value * 1e3  # to meV
-        D_err = result.params["Delta"].stderr * 1e3 if result.params["Delta"].stderr else float("nan")
-        G = result.params["Gamma"].value * 1e3
-        G_err = result.params["Gamma"].stderr * 1e3 if result.params["Gamma"].stderr else float("nan")
-        print(f"trial {trial}: Delta = {D:.3f} ± {D_err:.3f} meV "
-              f"(truth {truth['Delta']*1e3:.3f}) "
-              f"|  Gamma = {G:.4f} ± {G_err:.4f} meV (truth {truth['Gamma']*1e3:.3f})")
+    # Sort by ascending bias so the plot is left-to-right
+    order = np.argsort(bias)
+    bias = bias[order]
+    didv = didv[order]
+
+    # Normalize: divide by the median dI/dV in the wings (well above the gap)
+    far_mask = np.abs(bias) > 0.6 * np.abs(bias).max()
+    norm_val = np.median(didv[far_mask])
+    didv_n = didv / norm_val if norm_val != 0 else didv
+
+    # Fit (keyword args to avoid order confusion)
+    T = 4.2
+    V_ac = 0.2e-3
+
+    # result = fit_dynes(
+    #     bias, didv_n,
+    #     T_kelvin=T,
+    #     V_ac=V_ac,
+    #     Delta_init=1.20e-3,
+    #     Gamma_init=0.05e-3,
+    #     fit_T= True
+    # )
+
+    result = fit_ss(
+        bias, didv_n,
+        T_kelvin=4.2,
+        V_ac=0.2e-3,
+        Delta_init=1.0e-3,  # one gap value; the peaks will appear at ±2Δ
+        Gamma_init=0.05e-3,
+    )
+    print(result.fit_report())
+
+    # Pull values out (in meV for the title)
+    D = result.params["Delta"].value * 1e3
+    Derr = (result.params["Delta"].stderr or 0) * 1e3
+    G = result.params["Gamma"].value * 1e3
+    Gerr = (result.params["Gamma"].stderr or 0) * 1e3
+
+    print(result.fit_report())
+
+    # Smooth model curve at higher resolution for a clean line
+    V_dense = np.linspace(bias.min(), bias.max(), 1001)
+    fit_dense = result.eval(V=V_dense)
+
+    # Plot
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(bias * 1e3, didv_n, "o", ms=4, color="C0", label="data (normalized)")
+    ax.plot(V_dense * 1e3, fit_dense, "-", color="C1", lw=2, label="Dynes fit")
+    ax.axvline(0, color="k", lw=0.5)
+    ax.set_xlabel("Bias (mV)")
+    ax.set_ylabel("dI/dV (normalized)")
+    ax.set_title(f"Δ = {D:.3f} ± {Derr:.3f} meV   Γ = {G:.4f} ± {Gerr:.4f} meV")
+    ax.legend()
+    ax.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.show()

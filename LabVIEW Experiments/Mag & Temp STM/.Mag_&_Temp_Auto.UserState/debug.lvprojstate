@@ -23,7 +23,35 @@
       </Breakpoints>
       <Probes>
         <Generic>
-          <SignalUID value="5822"/>
+          <SignalUID value="10751"/>
+          <SignalUID value="6293"/>
+        </Generic>
+      </Probes>
+    </VI>
+    <VI name="Next_Field.vi">
+      <Breakpoints>
+        <NodeIndexes>
+        </NodeIndexes>
+        <SignalIndexes>
+        </SignalIndexes>
+      </Breakpoints>
+      <Probes>
+        <Generic>
+          <SignalUID value="2098"/>
+          <SignalUID value="2359"/>
+          <SignalUID value="7952"/>
+        </Generic>
+      </Probes>
+    </VI>
+    <VI name="Next_Temp.vi">
+      <Breakpoints>
+        <NodeIndexes>
+        </NodeIndexes>
+        <SignalIndexes>
+        </SignalIndexes>
+      </Breakpoints>
+      <Probes>
+        <Generic>
         </Generic>
       </Probes>
     </VI>

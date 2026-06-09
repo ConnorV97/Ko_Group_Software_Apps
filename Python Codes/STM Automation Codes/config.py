@@ -2,7 +2,7 @@ import os
 
 #Main File Directory
 
-main_dir = r"C:\Users\conno.DESKTOP-98EBONR\OneDrive\Desktop\PYSR Au(111)\Au(111) Temp"
+main_dir = r"C:\Users\conno.DESKTOP-98EBONR\OneDrive\Desktop\Nanonis Session"
 
 #Input Directory
 

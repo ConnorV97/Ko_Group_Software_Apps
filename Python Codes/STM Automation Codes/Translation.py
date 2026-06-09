@@ -151,7 +151,7 @@ def load_image_for_drift(img_path):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     return img.astype(np.float64)
 
-def calculate_translation(img1_path, img2_path, upsample_factor=1000):
+def calculate_translation(img1_path, img2_path, upsample_factor=200):
     """
     Sub-pixel phase correlation between two STM frames.
 
