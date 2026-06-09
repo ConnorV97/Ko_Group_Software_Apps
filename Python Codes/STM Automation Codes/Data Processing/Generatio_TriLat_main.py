@@ -37,7 +37,7 @@ save_png = True
 # Label of the first image (set > 0 if appending to an existing dataset)
 label = 0
 # Number of tight-binding models (LDOS computations)
-num_of_models = 10
+num_of_models = 200
 # Number of (E, z) pairs drawn per model
 num_of_STM_images = 1
 # Number of noisy realisations per clean STM image
@@ -46,9 +46,9 @@ num_of_noisy_images = 1
 # -----------------------------------------------------------------------
 # STM image geometry
 # -----------------------------------------------------------------------
-l_STM_min, l_STM_max = 1, 4    # [nm] lateral image size range
+l_STM_min, l_STM_max = 1, 3   # [nm] lateral image size range
 # sizes = np.arange(5,10,1)
-pxls = 256                       # image resolution (pixels per side)
+pxls = 512                       # image resolution (pixels per side)
 
 # -----------------------------------------------------------------------
 # Noise parameters
@@ -62,7 +62,7 @@ strain_max     = 0.0             # strain coefficient (0 = no strain)
 # -----------------------------------------------------------------------
 # p_dopants[i] = probability of having i dopants on the image
 # (num_dopants is multiplied by 2 internally, so 0->0, 1->2, 2->4 dopants)
-p_dopants = [0.50,0.50 , 0.0]   # currently: always zero dopants (clean surface)
+p_dopants = [0,1.0, 0.0]   # currently: always zero dopants (clean surface)
 p_vac     = [0.75, 0.25]      # currently: always zero vacancies
 
 # -----------------------------------------------------------------------

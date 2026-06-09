@@ -9,6 +9,13 @@ import config
 import matplotlib.pyplot as plt
 import re
 
+try:
+    from skimage.registration import phase_cross_correlation
+    _HAS_SKIMAGE = True
+except ImportError:
+    _HAS_SKIMAGE = False
+
+
 def parse_scan_label(path: str):
 
     name = os.path.basename(path)
@@ -120,93 +127,134 @@ def plot_fft(img1, img2, f1, f2, cross_power, inv_corr,scan1: str, scan2: str, t
 
 # print("RUNNING FILE:", __file__)
 
-def calculate_translation(img1_path, img2_path):
+def load_image_for_drift(img_path):
     """
-    Calculate the translation between two images using phase correlation method.
-    Parameters:
-    -----------
-    img1 : numpy.ndarray
-        First image (reference)
-    img2 : numpy.ndarray
-        Second image (shifted)
-    Returns:
-    --------
-    tuple
-        (dx, dy) - translation vector in pixels
+    Prefer the float64 .npy companion file if present (saved by
+    Processing_2.prepare_float_for_drift). Fall back to the uint8 PNG.
+
+    Returns a 2D float64 array.
     """
-    print(type(img1_path), img1_path)
-    img1 = cv2.imread(img1_path)
-    img2 = cv2.imread(img2_path)
+    npy_path = os.path.splitext(img_path)[0] + ".npy"
+    if os.path.exists(npy_path):
+        img = np.load(npy_path)
+        if img.ndim != 2:
+            # Defensive: if someone saved a 3D array, take the first channel.
+            img = img[..., 0] if img.ndim == 3 else img.squeeze()
+        return img.astype(np.float64)
+
+    # Fallback: read PNG. This path loses the float precision but keeps the
+    # pipeline working if the .npy companion is missing.
+    img = cv2.imread(img_path)
+    if img is None:
+        raise FileNotFoundError(f"Could not read image: {img_path}")
+    if img.ndim == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    return img.astype(np.float64)
+
+def calculate_translation(img1_path, img2_path, upsample_factor=1000):
+    """
+    Sub-pixel phase correlation between two STM frames.
+
+    Precision:
+        - Uses skimage.registration.phase_cross_correlation with upsampling
+          factor `upsample_factor` (default 100 -> ~0.01 px precision under
+          good SNR).
+        - Falls back to a hand-rolled COM-on-3x3 sub-pixel refinement if
+          scikit-image is not installed (precision ~0.1-0.3 px).
+
+    Parameters
+    ----------
+    img1_path, img2_path : str
+        Paths to image files. If a `.npy` companion file exists next to the
+        PNG, it will be used (float64, full precision). Otherwise the PNG is
+        read as uint8.
+    upsample_factor : int
+        Sub-pixel upsampling factor for the DFT method. Larger = more precise
+        but slower. 100 is a sensible default; 50 is faster, 200+ is rarely
+        needed for STM drift work.
+
+    Returns
+    -------
+    (x_shift, y_shift) : tuple of floats
+        Sub-pixel translation in pixels. Sign convention matches the previous
+        implementation: a positive x_shift means img2 is shifted to the right
+        relative to img1.
+    """
+    img1 = load_image_for_drift(img1_path)
+    img2 = load_image_for_drift(img2_path)
 
     if img1.shape != img2.shape:
         print(f"Resizing img2 from {img2.shape} to {img1.shape}")
-        img2= cv2.resize(img2, (img1.shape[1], img1.shape[0]))
+        img2 = cv2.resize(img2, (img1.shape[1], img1.shape[0]))
 
-    if img1 is None or img2 is None:
-        print("Error loading images")
-        return None, None
-
-    # Convert images to grayscale if they're RGB
-    if len(img1.shape) > 2:
-        img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-    if len(img2.shape) > 2:
-        img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-    # Apply Hanning window to reduce edge effects
+    # Apply Hanning window to suppress edge artifacts in the FFT
     h, w = img1.shape
     window = np.outer(np.hanning(h), np.hanning(w))
     img1_windowed = img1 * window
     img2_windowed = img2 * window
-    # Compute 2D FFT of both images
 
-    f1 = np.fft.fft2(img1_windowed)
-    f2 = np.fft.fft2(img2_windowed)
+    # ---------- Primary path: scikit-image upsampled DFT ----------
+    if _HAS_SKIMAGE:
+        # phase_cross_correlation returns (shift, error, phasediff) where
+        # shift is (y, x) and represents how img2 must be shifted to register
+        # with img1. To match the previous sign convention here, we negate
+        # so that a positive x_shift means "img2 has moved to the right
+        # relative to img1".
+        shift, error, _ = phase_cross_correlation(
+            img1_windowed,
+            img2_windowed,
+            upsample_factor=upsample_factor,
+            normalization="phase",
+        )
+        dy, dx = shift  # skimage convention: (row, col) = (y, x)
+        x_shift = -float(dx)
+        y_shift =  float(dy)  # y-axis: image rows increase downward; preserve previous "up positive" convention
 
+        # Diagnostics: still compute the inverse-correlation surface for plotting
+        f1 = np.fft.fft2(img1_windowed)
+        f2 = np.fft.fft2(img2_windowed)
+        cross_power = f1 * np.conj(f2)
+        cross_power_norm = cross_power / (np.abs(cross_power) + 1e-10)
+        inverse_cross_power = np.abs(np.fft.fftshift(np.fft.ifft2(cross_power_norm)))
 
-    # Compute cross-power spectrum
-    cross_power = f1 * np.conj(f2)
-    # Normalize to get phase correlation
-    cross_power = cross_power / (np.abs(cross_power) + 1e-10) # may need to fix this
-    # Compute inverse FFT
-    inverse_cross_power = np.fft.ifft2(cross_power)
+    # ---------- Fallback: original COM-on-3x3 refinement ----------
+    else:
+        f1 = np.fft.fft2(img1_windowed)
+        f2 = np.fft.fft2(img2_windowed)
+        cross_power = f1 * np.conj(f2)
+        cross_power = cross_power / (np.abs(cross_power) + 1e-10)
+        inverse_cross_power = np.abs(np.fft.fftshift(np.fft.ifft2(cross_power)))
+        inverse_cross_power = ndimage.gaussian_filter(inverse_cross_power, sigma=1)
 
-    # Find the peak
-    inverse_cross_power = np.abs(np.fft.fftshift(inverse_cross_power))
+        y_max, x_max = np.unravel_index(
+            np.argmax(inverse_cross_power), inverse_cross_power.shape
+        )
+        y_center = h // 2
+        x_center = w // 2
 
-    # Apply Gaussian filter to smooth the result
-    inverse_cross_power = ndimage.gaussian_filter(inverse_cross_power, sigma=1)
-    # Find location of maximum
-    y_max, x_max = np.unravel_index(np.argmax(inverse_cross_power), inverse_cross_power.shape)
-    # Calculate shift relative to center
-    x = x_max - w // 2
-    y = y_max - h // 2
+        # 3x3 center-of-mass refinement
+        y_min = max(y_max - 1, 0)
+        y_max_p = min(y_max + 2, h)
+        x_min = max(x_max - 1, 0)
+        x_max_p = min(x_max + 2, w)
+        region = inverse_cross_power[y_min:y_max_p, x_min:x_max_p]
+        total_mass = np.sum(region)
+        if total_mass <= 0:
+            x_shift = float(x_max - x_center)
+            y_shift = float(-(y_max - y_center))
+        else:
+            y_coords, x_coords = np.mgrid[y_min:y_max_p, x_min:x_max_p]
+            y_refined = np.sum(y_coords * region) / total_mass
+            x_refined = np.sum(x_coords * region) / total_mass
+            y_shift = -(y_refined - y_center)
+            x_shift = -(x_refined - x_center)
+        # also build f1/f2 for diagnostics if the caller wants them
+        # (already computed above)
 
-    # Sub-pixel refinement using center of mass in a 3x3 neighborhood
-    y_center = h // 2
-    x_center = w // 2
-    # Extract 3x3 region around the peak
-    y_min = max(y_max - 1, 0)
-    y_max_p = min(y_max + 2, h)
-    x_min = max(x_max - 1, 0)
-    x_max_p = min(x_max + 2, w)
-    region = inverse_cross_power[y_min:y_max_p, x_min:x_max_p]
-    # Calculate center of mass
-    total_mass = np.sum(region)
-    # Initialize grid coordinates
-    y_coords, x_coords = np.mgrid[y_min:y_max_p, x_min:x_max_p]
-    # Calculate weighted average for subpixel accuracy
-    y_refined = np.sum(y_coords * region) / total_mass
-    x_refined = np.sum(x_coords * region) / total_mass
-    # Calculate shift from center (origin)
-    y_shift = -(y_refined - y_center)
-    x_shift = -(x_refined - x_center)
-    # Round to two decimal places
-    # y_shift = round(y_shift, 7)
-    # x_shift = round(x_shift, 7)
-
+    # Diagnostic plot
     scan1 = parse_scan_label(img1_path)
     scan2 = parse_scan_label(img2_path)
     img_type = infer_img_type(img1_path)
-
     title = f"FFT ({img_type}) |{scan1} vs {scan2}"
 
     plot_fft(
@@ -216,10 +264,10 @@ def calculate_translation(img1_path, img2_path):
         f2,
         cross_power,
         inverse_cross_power,
-        scan1 = scan1,
-        scan2 = scan2,
-        img_type= img_type,
-        title = title
+        scan1=scan1,
+        scan2=scan2,
+        img_type=img_type,
+        title=title,
     )
 
     return x_shift, y_shift

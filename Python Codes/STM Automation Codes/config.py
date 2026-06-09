@@ -2,8 +2,7 @@ import os
 
 #Main File Directory
 
-main_dir = r"C:\Users\conno.DESKTOP-98EBONR\OneDrive\Desktop\Pb(111) Processed"
-
+main_dir = r"C:\Users\conno.DESKTOP-98EBONR\OneDrive\Desktop\PYSR Au(111)\Au(111) Temp"
 
 #Input Directory
 
@@ -18,7 +17,7 @@ denoise_dir = os.path.join(main_dir, "denoise")
 
 meta_data = os.path.join(main_dir, "STM_Metadata.xlsx")
 
-#Plot directory
+#Plot directory is
 
 plot_dir = os.path.join(main_dir, "Plotted Data")
 

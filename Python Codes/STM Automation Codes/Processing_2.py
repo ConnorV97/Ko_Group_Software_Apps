@@ -267,6 +267,11 @@ def normalize_img_for_drift(img_flattened):
 
     return img_8bit
 
+def prepare_float_for_drift(img_flattened):
+
+    img = img_flattened.astype("float64")
+    img = np.flipud(img)
+    return img
 
 
 def process_single_sxm(sxm_file_path, flat_dir, denoise_dir, plot_dir, count=None):
@@ -321,6 +326,7 @@ def process_single_sxm(sxm_file_path, flat_dir, denoise_dir, plot_dir, count=Non
         # 1) Flatten & normalize for z height data
         flat = flatten_image(z_arr, remove_poly= True, remove_plane= False)
         norm_img = normalize_img_for_drift(flat)
+        float_img = prepare_float_for_drift(flat)
 
         """For Current Channels
 
@@ -343,9 +349,11 @@ def process_single_sxm(sxm_file_path, flat_dir, denoise_dir, plot_dir, count=Non
         plt.close()
         # Write the raw image file
         cv2.imwrite(os.path.join(flat_dir, f"{out_name}_flat.png"), norm_img)
+        np.save(os.path.join(flat_dir, f"{out_name}_flat.npy"), norm_img)
 
         # 2) Denoise & save
         denoised = denoise_data(norm_img)
+        denoised_float = denoised.astype(np.float64)
         plt.figure(figsize=(10, 10))
         im2 = plt.imshow(denoised, cmap='afmhot', interpolation='nearest') #extent=[0, lx, 0, ly])
         plt.title('Denoised Image')
@@ -355,6 +363,7 @@ def process_single_sxm(sxm_file_path, flat_dir, denoise_dir, plot_dir, count=Non
         plt.savefig(os.path.join(plot_dir, f"{out_name}_denoise_plot.png"))
         plt.close()
         cv2.imwrite(os.path.join(denoise_dir, f"{out_name}_denoise.png"), denoised)
+        np.save(os.path.join(denoise_dir, f"{out_name}_denoise.npy"), denoised)
 
         """For Current Channels
         # plt.figure()

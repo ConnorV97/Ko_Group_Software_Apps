@@ -56,7 +56,7 @@ def ldos_from_params_TriLat(pos_dopants, pos_vac, theta, shift_x, shift_y, l_STM
         @pb.site_state_modifier
         def modifier(state, x, y):
             for pos in position:
-                state[(x-pos[0])**2 + (y-pos[1])**2 > radius**2]= False
+                state[(x-pos[0])**2 + (y-pos[1])**2 < radius**2]= False
             return state
         return modifier
 
@@ -103,8 +103,13 @@ def ldos_from_params_TriLat(pos_dopants, pos_vac, theta, shift_x, shift_y, l_STM
 
     # Get the actual spectral radius
     try:
-        eigs = spla.eigsh(H, k=2, which='BE', return_eigenvectors=False)
-        print("Smallest/largest eigenvalues:", eigs)
+        k = min(2, H.shape[0] - 1)
+        if k > 0:
+            eigs = spla.eigsh(H, k=k, which='BE', return_eigenvectors=False)
+            print("Eigenvalues:", eigs)
+        else:
+            print("Matrix too small for eigsh")
+
     except Exception as e:
         print("Eigensolver failed:", e)
 
